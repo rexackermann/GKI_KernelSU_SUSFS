@@ -209,7 +209,7 @@ jobs:
       uses: ./.github/actions/bbg
 
     - name: Apply Module Check Bypass
-      if: ${{ inputs.variant == 'Bypass' || inputs.variant == 'Hakan' }}
+      if: ${{ inputs.variant != 'Official' && inputs.variant != 'Standard' }}
       run: |
         if [[ "$KERNEL_VERSION" == "6.1" || "$KERNEL_VERSION" == "6.6" || "$KERNEL_VERSION" == "6.12" ]]; then
           TARGET_FILE="$GITHUB_WORKSPACE/kernel/common/kernel/module/version.c"
@@ -252,7 +252,7 @@ jobs:
         os_patch_level: ${{ steps.parse.outputs.os_patch_level }}
 
     - name: Apply ABI Compare Bypass
-      if: false
+      if: true
       working-directory: ${{ github.workspace }}/kernel
       run: |
         # ABI compare bypass per kernel/android version
@@ -268,7 +268,14 @@ jobs:
         elif [[ "$ANDROID_VERSION" == "android14" && "$KERNEL_VERSION" == "6.1" ]]; then
           perl -i -pe 's/^(\s*)return 1$/$1print("Who Cares? Bypassing Now!")\n$1return 0/g if /if missing_symbols:/../return 1/' build/kernel/abi/check_buildtime_symbol_protection.py
         elif [[ "$ANDROID_VERSION" == "android15" && "$KERNEL_VERSION" == "6.6" ]]; then
-          perl -i -pe 's/^(\s*)return 1$/$1print("Who Cares? Bypassing Now!")\n$1return 0/g if /if missing_symbols:/../return 1/' build/kernel/abi/check_buildtime_symbol_protection.py
+          # Check both common Kleaf locations
+          [[ -f build/kernel/abi/check_buildtime_symbol_protection.py ]] && ABI_FILE="build/kernel/abi/check_buildtime_symbol_protection.py"
+          [[ -f build/kernel/check_buildtime_symbol_protection.py ]] && ABI_FILE="build/kernel/check_buildtime_symbol_protection.py"
+          if [[ -n "$ABI_FILE" ]]; then
+            perl -i -pe 's/^(\s*)return 1$/$1print("Who Cares? Bypassing Now!")\n$1return 0/g if /if missing_symbols:/../return 1/' "$ABI_FILE"
+          else
+            echo "Warning: check_buildtime_symbol_protection.py not found"
+          fi
         fi
 
     - name: Append ashmem exports if missing
